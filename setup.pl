@@ -174,6 +174,7 @@ for (1..$NUM_CLUSTERS) {
 			   "-w /slurm/$cname " .	#working directory
 			   "-d " .			#detach run in background
 			   "-e $path_env " .		#set PATH env variable
+			   "-e MANPATH=/slurm/$cname/share/man " . #set MANPATH env variable
 			   "-e $testsuite_env " .	#set testsuite env variable
 			   "$DOCKER_IMAGE " .		#docker image
 			   "tail -f /dev/null");	#keep container running
