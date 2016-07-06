@@ -82,9 +82,11 @@ print "Pulling docker image to run slurm in\n";
 run_cmd("docker pull $DOCKER_IMAGE", 0);
 
 # create containers and build slurm into environments
+# Can't parallize make because it makes copies of the man pages in the src
+# directory.
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
-	print "Building source for $cname\n";
+	print "Configuring source for $cname -- in parallel\n";
 	run_cmd_fork("docker run -P " .				#make ports available to localhost
 				"-h $cname " .			#hostname
 			   	"--name=$cname " .		#container name
@@ -96,8 +98,36 @@ for (1..$NUM_CLUSTERS) {
 			   	"bash -c '/slurm/slurm/configure " .
 					"--prefix=/slurm/$cname " .
 					"--enable-developer " .
-					"--enable-multiple-slurmd >/dev/null && " .
-					"make -j install >/dev/null'"); #command to run
+					"--enable-multiple-slurmd >/dev/null'"); #command to run
+}
+while (my $pid = wait() != -1) {
+	my $rc = $? >> 8;
+	die "ERROR: forked pid:$pid returned an error (rc:$rc): $!" if ($?);
+}
+
+for (1..$NUM_CLUSTERS) {
+	my $cname = get_cluster_name($_);
+	print "Making source for $cname -- in serial\n";
+	run_cmd("docker run -P " .				#make ports available to localhost
+			   "-h $cname " .			#hostname
+			   "--name=$cname " .		#container name
+			   "--net=$DOCKER_NETWORK " .	#docker user network
+			   "-v $CWD:/slurm " .		#mount current directory
+			   "-w /slurm/$cname/slurm " .	#working directory
+			   "--rm " .			#remove container after done
+			   "$DOCKER_IMAGE " .		#docker image
+			   "bash -c 'make -j >/dev/null'"); #command to run
+
+	print "Installing source for $cname -- in parallel\n";
+	run_cmd_fork("docker run -P " .				#make ports available to localhost
+				"-h $cname " .			#hostname
+				"--name=$cname " .		#container name
+				"--net=$DOCKER_NETWORK " .	#docker user network
+				"-v $CWD:/slurm " .		#mount current directory
+				"-w /slurm/$cname/slurm " .	#working directory
+				"--rm " .			#remove container after done
+				"$DOCKER_IMAGE " .		#docker image
+				"bash -c 'make -j install >/dev/null'"); #command to run
 }
 while (my $pid = wait() != -1) {
 	my $rc = $? >> 8;
