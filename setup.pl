@@ -195,6 +195,7 @@ for (1..$NUM_CLUSTERS) {
 
 #print sinfo for each cluster
 print "Making sure everything is responding:\n";
+sleep 3; #Give time for last slurmds to come up.
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
 	run_cmd("docker exec $cname sinfo");
