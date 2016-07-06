@@ -153,9 +153,18 @@ run_cmd("docker run -P " .			#make ports available to localhost
 
 #start 3 instances of ubuntu
 print "Start slurm daemons\n";
+
+#grab the current PATH from the container since it can't be set globally with -e
+#because it won't take the $PATH of the container -- takes $PATH from the
+#localhost.
+my $path_cmd = "docker run --rm $DOCKER_IMAGE bash -c 'echo \$PATH'";
+my $cont_path = `$path_cmd`;
+die "ERROR: running $path_cmd: $!" if ($?);
+chomp($cont_path);
+
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
-	my $path_env = "PATH=/slurm/$cname/sbin:/slurm/$cname/bin:\$PATH";
+	my $path_env = "PATH=/slurm/$cname/sbin:/slurm/$cname/bin:$cont_path";
 	my $testsuite_env = "SLURM_LOCAL_GLOBALS_FILE=globals.local";
 	run_cmd("docker run -P " .			#make ports available to localhost
 			   "-h $cname " .		#hostname
