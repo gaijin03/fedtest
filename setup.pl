@@ -62,7 +62,7 @@ run_cmd("docker network create --driver bridge $DOCKER_NETWORK", 0);
 
 # clone federation repo
 if (-d "slurm") {
-	print "get lastest from $GIT_BRANCH branch\n";
+	print "get latest from $GIT_BRANCH branch\n";
 	run_cmd("git -C slurm pull", 0);
 } else {
 	print "cloning $GIT_BRANCH\n";
