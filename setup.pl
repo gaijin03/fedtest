@@ -142,6 +142,7 @@ print "Start Daemons\n";
 print "Start mysql server\n";
 #create persistent mysql storage dir
 run_cmd("mkdir -p $MYSQL_PERSIST");
+run_cmd("chmod g+s $MYSQL_PERSIST");
 run_cmd("docker run -P " .			#make ports available to localhost
 		   "-h $MYSQL_DB_HOST " .	#hostname
 		   "--name=$MYSQL_DB_HOST " .	#container name
@@ -255,6 +256,8 @@ sub setup_env
 
 	print "Setting up $cname\n";
 
+	run_cmd("mkdir -p  $cname", 0);
+	run_cmd("chmod g+s $cname", 0);
 	run_cmd("mkdir -p $cname/state", 0);
 	run_cmd("mkdir -p $cname/spool", 0);
 	run_cmd("mkdir -p $cname/run",   0);
