@@ -353,7 +353,7 @@ DebugFlags=protocol,federation
 LogTimeFormat=thread_id
 
 NodeName=DEFAULT CPUs=8 Sockets=1 CoresPerSocket=4 ThreadsPerCore=2 State=UNKNOWN RealMemory=7830
-NodeName=${cname}_[1-10] NodeAddr=localhost Port=$host_ports
+NodeName=${cname}_[1-10] NodeAddr=$cname Port=$host_ports
 
 PartitionName=debug Nodes=${cname}_[1-10] Default=YES MaxTime=INFINITE State=UP
 END
