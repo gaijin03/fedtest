@@ -39,8 +39,27 @@ chomp($CWD);
 if (system("which docker")) {
 	print <<"END";
 ERROR: couldn't find docker in the current path.
-Please install docker before continuing:
-https://docs.docker.com/engine/installation/
+       Please install docker before continuing:
+       https://docs.docker.com/engine/installation/
+END
+	exit 1;
+}
+
+# Verify docker service is running
+if (system("ps -C docker")) {
+	print <<"END";
+ERROR: Doesn't appear that the docker engine is running.
+       Please start the docker engine and try again.
+END
+	exit 1;
+}
+
+# Verify that current user can run docker.
+if (system("docker run hello-world")) {
+	print <<"END";
+ERROR: failed to run "docker run hello-world".
+       This is most likely a permissions issue. Either add your user to the
+       docker group or run this script with elevated privileges.
 END
 	exit 1;
 }
