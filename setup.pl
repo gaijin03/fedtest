@@ -141,7 +141,7 @@ print "Start Daemons\n";
 #start mysql server
 print "Start mysql server\n";
 #create persistent mysql storage dir
-`mkdir -p $MYSQL_PERSIST`;
+run_cmd("mkdir -p $MYSQL_PERSIST");
 run_cmd("docker run -P " .			#make ports available to localhost
 		   "-h $MYSQL_DB_HOST " .	#hostname
 		   "--name=$MYSQL_DB_HOST " .	#container name
@@ -243,8 +243,8 @@ sub run_cmd
 	my $cmd    = shift;
 	my $ignore = shift;
 	print "cmd: $cmd\n";
-	print `$cmd`;
-	die "ERROR: running $cmd: $!" if (!$ignore && $?);
+	my $rc = system($cmd);
+	die "ERROR: running $cmd: $!" if (!$ignore && $rc);
 }
 
 sub setup_env
@@ -255,12 +255,12 @@ sub setup_env
 
 	print "Setting up $cname\n";
 
-	`mkdir -p $cname/state`;
-	`mkdir -p $cname/spool`;
-	`mkdir -p $cname/run`;
-	`mkdir -p $cname/log`;
-	`mkdir -p $cname/slurm`;
-	`mkdir -p $cname/etc`;
+	run_cmd("mkdir -p $cname/state", 0);
+	run_cmd("mkdir -p $cname/spool", 0);
+	run_cmd("mkdir -p $cname/run",   0);
+	run_cmd("mkdir -p $cname/log",   0);
+	run_cmd("mkdir -p $cname/slurm", 0);
+	run_cmd("mkdir -p $cname/etc",   0);
 
 	# slurm.conf
 	open FILE, ">$cname/etc/slurm.conf" or die "Couldn't create slurm.conf: $!";
