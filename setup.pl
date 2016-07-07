@@ -208,16 +208,11 @@ run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test2
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.1'");
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.2'");
 
-print "All tests done!\n\n";
+print "\nAll tests passed!\n\n";
 
 print <<"END";
-You can now interact with the setup commands such as:
-docker exec -ti {fed1|fed2|fed3|mysql} bash - this will put you in bash shell on the given cluster.
-
-Once in a cluster (ie. docker container), you can run commands directly to the given
-cluster by using the commands directly (ie. PATH= has been set to the
-corresponding cluster's binaries) or by calling the binaries directly
-(e.g./slurm/{cluster_name}/bin/sinfo).
+You can now interact with the setup.
+See the README for information and examples on how to interact with the setup.
 
 END
 
