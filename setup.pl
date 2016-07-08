@@ -225,9 +225,9 @@ for (1..$NUM_CLUSTERS) {
 #Now run the relevant federation expect tests
 print "Running federation tests.\n";
 my $cname = get_cluster_name(1);
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test21.37'");
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.1'");
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.2'");
+run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.3'");
 
 print "\nAll tests passed!\n\n";
 
