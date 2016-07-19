@@ -197,7 +197,7 @@ for (1..$NUM_CLUSTERS) {
 			   "-e MANPATH=/slurm/$cname/share/man " . #set MANPATH env variable
 			   "-e $testsuite_env " .	#set testsuite env variable
 			   "-t " .			#allocate a tty.
-			   #"--security-opt='seccomp=unconfined' " . #allows gdb to work
+			   "--security-opt='seccomp=unconfined' " . #allows gdb to work
 			   "$DOCKER_IMAGE " .		#docker image
 			   "tail -f /dev/null");	#keep container running
 
