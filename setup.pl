@@ -124,19 +124,24 @@ while (my $pid = wait() != -1) {
 	die "ERROR: forked pid:$pid returned an error (rc:$rc): $!" if ($?);
 }
 
+# Can't parallize making of docs because make it makes copies of the man pages
+# in the src directory.
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
-	print "Making source for $cname -- in serial\n";
+	print "Making docs for $cname -- in serial\n";
 	run_cmd("docker run -P " .				#make ports available to localhost
 			   "-h $cname " .			#hostname
 			   "--name=$cname " .		#container name
 			   "--net=$DOCKER_NETWORK " .	#docker user network
 			   "-v $CWD:/slurm " .		#mount current directory
-			   "-w /slurm/$cname/slurm " .	#working directory
+			   "-w /slurm/$cname/slurm/doc " . #working directory
 			   "--rm " .			#remove container after done
 			   "$DOCKER_IMAGE " .		#docker image
-			   "bash -c 'make -j >/dev/null'"); #command to run
+			   "bash -c 'make -j install >/dev/null'"); #command to run
+}
 
+for (1..$NUM_CLUSTERS) {
+	my $cname = get_cluster_name($_);
 	print "Installing source for $cname -- in parallel\n";
 	run_cmd_fork("docker run -P " .				#make ports available to localhost
 				"-h $cname " .			#hostname
