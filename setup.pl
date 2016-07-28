@@ -127,8 +127,8 @@ while (my $pid = wait() != -1) {
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
 	print "Making docs for $cname -- in serial\n";
-	run_cmd("docker run -P " .				#make ports available to localhost
-			   "-h $cname " .			#hostname
+	run_cmd("docker run -P " .			#make ports available to localhost
+			   "-h $cname " .		#hostname
 			   "--name=$cname " .		#container name
 			   "--net=$DOCKER_NETWORK " .	#docker user network
 			   "-v $CWD:/slurm " .		#mount current directory
