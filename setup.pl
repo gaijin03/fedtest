@@ -216,7 +216,8 @@ for (1..$NUM_CLUSTERS) {
 	run_cmd("docker exec $cname $MUNGE_START_CMD");
 	run_cmd("docker exec $cname /slurm/$cname/sbin/slurmdbd") if ($_ == 1);
 	sleep 5;
-	run_cmd("docker exec $cname /slurm/$cname/bin/sacctmgr -i add cluster $cname");
+	run_cmd_expect_error("docker exec $cname /slurm/$cname/bin/sacctmgr -i add cluster $cname",
+			     "This cluster $cname already exists.  Not adding.");
 	sleep 5;
 	run_cmd("docker exec $cname /slurm/$cname/sbin/slurmctld -c");
 
@@ -277,6 +278,17 @@ sub run_cmd
 	print "cmd: $cmd\n";
 	my $rc = system($cmd);
 	die "ERROR: running $cmd: $!" if (!$ignore && $rc);
+}
+
+sub run_cmd_expect_error
+{
+	my $cmd            = shift;
+	my $expected_error = shift;
+	print "cmd: $cmd\n";
+	my $output = `$cmd`;
+	if (($? >> 8) && !($output =~ m/$expected_error/)) {
+		die "ERROR: running $cmd: $!";
+	}
 }
 
 sub setup_env
