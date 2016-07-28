@@ -101,8 +101,6 @@ print "Pulling docker image to run slurm in\n";
 run_cmd("docker pull $DOCKER_IMAGE", 0);
 
 # create containers and build slurm into environments
-# Can't parallize make because it makes copies of the man pages in the src
-# directory.
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
 	print "Configuring source for $cname -- in parallel\n";
