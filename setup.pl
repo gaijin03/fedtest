@@ -180,7 +180,7 @@ run_cmd("docker run -P " .			#make ports available to localhost
 		   "--name=$DB_HOST " .		#container name
 		   "--net=$DOCKER_NETWORK " .	#docker user network
 		   "-e MYSQL_ROOT_PASSWORD=$DB_PASSWD " .	#root passwd
-		   "-v $CWD/$DB_PERSIST/var/lib/mysql " .	#mount mysql persist directory
+		   "-v $CWD/$DB_PERSIST:/var/lib/mysql " .	#mount mysql persist directory
 		   "-d " .			#daemonize
 		   $DOCKER_DB_IMAGE);		#docker image
 
