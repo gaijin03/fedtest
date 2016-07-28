@@ -21,12 +21,22 @@ my $ACCT_PORT       = 30000;
 my $BASE_PORT       = 30001;
 my $CLUSTER_PREFIX  = "fed";
 my $DOCKER_NETWORK  = "federation";
-my $DOCKER_IMAGE    = "gaijin03/slurm_build_ubuntu1604";
+
+# ubuntu1604 settings:
+#my $DOCKER_IMAGE    = "gaijin03/slurm_build_ubuntu1604";
+#my $DOCKER_DB_IMAGE = "mysql:5";
+#my $MUNGE_START_CMD = "service munge start";
+
+# centos7 settings:
+my $DOCKER_IMAGE    = "gaijin03/slurm_build_centos7";
+my $DOCKER_DB_IMAGE = "mariadb:5.5";
+my $MUNGE_START_CMD = "runuser -u munge /usr/sbin/munged";
+
 my $GIT_BRANCH      = "federation";
 my $GIT_REPO        = "https://github.com/SchedMD/slurm.git";
-my $MYSQL_DB_HOST   = "mysql";
-my $MYSQL_PASSWD    = "12345";
-my $MYSQL_PERSIST   = "mysql_p";
+my $DB_HOST         = "dbhost";
+my $DB_PASSWD       = "12345";
+my $DB_PERSIST      = "db_persist";
 my $NUM_CLUSTERS    = 3;
 my $REMOTE_PATH     = "/slurm";
 my $SLURM_DB_NAME   = "slurm_fed";
@@ -66,8 +76,8 @@ END
 
 #Make sure containers are gone.
 print "Cleaning up any existing docker containers/networks\n";
-run_cmd("docker stop $MYSQL_DB_HOST", 1);
-run_cmd("docker rm -f $MYSQL_DB_HOST", 1);
+run_cmd("docker stop $DB_HOST", 1);
+run_cmd("docker rm -f $DB_HOST", 1);
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
 	run_cmd("docker stop $cname", 1);
@@ -163,16 +173,16 @@ print "Start Daemons\n";
 #start mysql server
 print "Start mysql server\n";
 #create persistent mysql storage dir
-run_cmd("mkdir -p $MYSQL_PERSIST");
-run_cmd("chmod g+s $MYSQL_PERSIST");
+run_cmd("mkdir -p $DB_PERSIST");
+run_cmd("chmod g+s $DB_PERSIST");
 run_cmd("docker run -P " .			#make ports available to localhost
-		   "-h $MYSQL_DB_HOST " .	#hostname
-		   "--name=$MYSQL_DB_HOST " .	#container name
+		   "-h $DB_HOST " .		#hostname
+		   "--name=$DB_HOST " .		#container name
 		   "--net=$DOCKER_NETWORK " .	#docker user network
-		   "-e MYSQL_ROOT_PASSWORD=$MYSQL_PASSWD " .	#root passwd
-		   "-v $CWD/$MYSQL_PERSIST/var/lib/mysql " .	#mount mysql persist directory
+		   "-e MYSQL_ROOT_PASSWORD=$DB_PASSWD " .	#root passwd
+		   "-v $CWD/$DB_PERSIST/var/lib/mysql " .	#mount mysql persist directory
 		   "-d " .			#daemonize
-		   "mysql");			#docker image
+		   $DOCKER_DB_IMAGE);		#docker image
 
 #start 3 instances of ubuntu
 print "Start slurm daemons\n";
@@ -204,7 +214,7 @@ for (1..$NUM_CLUSTERS) {
 			   "$DOCKER_IMAGE " .		#docker image
 			   "tail -f /dev/null");	#keep container running
 
-	run_cmd("docker exec $cname service munge start");
+	run_cmd("docker exec $cname $MUNGE_START_CMD");
 	run_cmd("docker exec $cname /slurm/$cname/sbin/slurmdbd") if ($_ == 1);
 	sleep 5;
 	run_cmd("docker exec $cname /slurm/$cname/bin/sacctmgr -i add cluster $cname");
@@ -403,11 +413,11 @@ PidFile=$REMOTE_PATH/$cname/run/slurmdbd.pid
 
 SlurmUser=$SLURM_USER
 StorageUser=$SLURM_USER
-StoragePass=$MYSQL_PASSWD
+StoragePass=$DB_PASSWD
 
 StorageType=accounting_storage/mysql
 StorageLoc=$SLURM_DB_NAME
-StorageHost=$MYSQL_DB_HOST
+StorageHost=$DB_HOST
 END
 
 	return $conf;
