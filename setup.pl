@@ -197,7 +197,7 @@ chomp($cont_path);
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
 	my $path_env = "PATH=/slurm/$cname/sbin:/slurm/$cname/bin:$cont_path";
-	my $testsuite_env = "SLURM_LOCAL_GLOBALS_FILE=globals.local";
+	my $testsuite_env = "SLURM_LOCAL_GLOBALS_FILE=globals.$cname";
 	run_cmd("docker run -P " .			#make ports available to localhost
 			   "-h $cname " .		#hostname
 			   "--name=$cname " .		#container name
@@ -318,7 +318,7 @@ sub setup_env
 	close FILE;
 
 	# globals.local
-	open FILE, ">$CWD/slurm/testsuite/expect/globals.local" or die "Couldn't create globals.local: $!";
+	open FILE, ">$CWD/slurm/testsuite/expect/globals.$cname" or die "Couldn't create globals.$cname $!";
 	print FILE <<"END";
 set my_slurm_base "$REMOTE_PATH"
 set src_dir "\$my_slurm_base/slurm"
