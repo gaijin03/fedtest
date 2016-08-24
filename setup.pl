@@ -56,7 +56,7 @@ END
 }
 
 # Verify docker service is running
-if (system("ps -C docker")) {
+if (system("ps -C docker") && system("ps -C dockerd")) {
 	print <<"END";
 ERROR: Doesn't appear that the docker engine is running.
        Please start the docker engine and try again.
