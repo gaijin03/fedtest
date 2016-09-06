@@ -39,7 +39,7 @@ my $GIT_BRANCH = "federation";
 my $GIT_REPO   = "https://github.com/SchedMD/slurm.git";
 
 my $NUM_CLUSTERS  = 3;
-my $SLURM_DB_NAME = "slurm_fed2";
+my $SLURM_DB_NAME = "slurm_fed";
 my $user = `whoami`;
 chomp($user);
 
