@@ -241,6 +241,7 @@ my $cname = get_cluster_name(1);
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.1'");
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.2'");
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.3'");
+run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.4'");
 
 print "\nAll tests passed!\n\n";
 
