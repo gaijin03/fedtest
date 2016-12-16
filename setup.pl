@@ -347,7 +347,6 @@ sub make_slurm_conf
 	my $cname    = shift;
 	my $loc_port = shift;
 
-	my $sched_port = $loc_port++;
 	my $ctld_port  = $loc_port++;
 	my $host_ports = $loc_port . "-" . ($loc_port+9);
 
@@ -381,7 +380,6 @@ Waittime=0
 DefMemPerCPU=100
 FastSchedule=2
 SchedulerType=sched/backfill
-SchedulerPort=$sched_port
 SelectType=select/cons_res
 SelectTypeParameters=CR_CORE_Memory
 PriorityType=priority/multifactor
