@@ -352,6 +352,7 @@ sub make_slurm_conf
 ClusterName=$cname
 ControlMachine=localhost
 AuthType=auth/munge
+AuthInfo=cred_expire=30 #quicker requeue time
 CacheGroups=0
 CryptoType=crypto/munge
 MpiDefault=none
@@ -397,6 +398,9 @@ NodeName=DEFAULT CPUs=8 Sockets=1 CoresPerSocket=4 ThreadsPerCore=2 State=UNKNOW
 NodeName=${cname}_[1-10] NodeAddr=localhost Port=$host_ports
 
 PartitionName=debug Nodes=${cname}_[1-10] Default=YES MaxTime=INFINITE State=UP
+
+RequeueExit=5
+RequeueExitHold=6
 END
 
 	return $conf
