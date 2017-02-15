@@ -62,7 +62,7 @@ if (defined $opt_help) {
 }
 
 print "Creating prefix: $opt_prefix\n";
-die "Failed to created $opt_prefix: $!" if system("mkdir -p $opt_prefix");
+die "Failed to create $opt_prefix: $!" if system("mkdir -p $opt_prefix");
 chdir $opt_prefix or die "Couldn't chdir to $opt_prefix: $!";
 $full_prefix = `pwd`; # Get full path
 chomp($full_prefix);
@@ -157,7 +157,11 @@ print "Running regression tests\n";
 my $test_dir = "$full_prefix/slurm/testsuite/expect";
 $ENV{SLURM_LOCAL_GLOBALS_FILE} = "$test_dir/globals.$test_cname";
 chdir $test_dir or die "Couldn't chdir to $test_dir: $!";
-run_cmd("./test37.1 && ./test37.2 && ./test37.3");
+run_cmd("./test37.1 && " .
+	"./test37.2 && " .
+	"./test37.3 && " .
+	"./test37.4 && " .
+	"./test37.5");
 
 print "All tests ran sucessfully.\n\n";
 
