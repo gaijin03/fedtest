@@ -243,6 +243,7 @@ run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test3
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.3'");
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.4'");
 run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.5'");
+run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.6'");
 
 print "\nAll tests passed!\n\n";
 
