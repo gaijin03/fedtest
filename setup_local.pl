@@ -412,6 +412,8 @@ PartitionName=debug Nodes=${cname}_[1-10] Default=YES MaxTime=INFINITE State=UP
 
 RequeueExit=5
 RequeueExitHold=6
+
+FederationParameters=fed_display
 END
 
 	return $conf
