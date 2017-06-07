@@ -238,22 +238,9 @@ for (1..$NUM_CLUSTERS) {
 #Now run the relevant federation expect tests
 print "Running federation tests.\n";
 my $cname = get_cluster_name(1);
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.1'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.2'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.3'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.4'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.5'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.6'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.7'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.8'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.9'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.10'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.11'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.12'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.13'");
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./test37.14'");
+run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./regression.py --include=test22.1,test37.*'");
 
-print "\nAll tests passed!\n\n";
+print "\nDone running tests!\n\n";
 
 print <<"END";
 You can now interact with the setup.

@@ -157,22 +157,9 @@ print "Running regression tests\n";
 my $test_dir = "$full_prefix/slurm/testsuite/expect";
 $ENV{SLURM_LOCAL_GLOBALS_FILE} = "$test_dir/globals.$test_cname";
 chdir $test_dir or die "Couldn't chdir to $test_dir: $!";
-run_cmd("./test37.1 && " .
-	"./test37.2 && " .
-	"./test37.3 && " .
-	"./test37.4 && " .
-	"./test37.5 && " .
-	"./test37.6 && " .
-	"./test37.7 && " .
-	"./test37.8 && " .
-	"./test37.9 && " .
-	"./test37.10 && " .
-	"./test37.11 && " .
-	"./test37.12 && " .
-	"./test37.13 && " .
-	"./test37.14");
+run_cmd("./regression.py --include=test22.1,test37.*");
 
-print "All tests ran sucessfully.\n\n";
+print "Done running tests.\n\n";
 
 exit 0;
 
