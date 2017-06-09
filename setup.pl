@@ -32,7 +32,7 @@ my $DOCKER_IMAGE    = "gaijin03/slurm_build_centos7";
 my $DOCKER_DB_IMAGE = "mariadb:5.5";
 my $MUNGE_START_CMD = "runuser -u munge /usr/sbin/munged";
 
-my $GIT_BRANCH      = "federation";
+my $GIT_BRANCH      = "master";
 my $GIT_REPO        = "https://github.com/SchedMD/slurm.git";
 my $DB_HOST         = "dbhost";
 my $DB_PASSWD       = "12345";
