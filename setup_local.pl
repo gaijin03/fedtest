@@ -157,11 +157,20 @@ print "Running regression tests\n";
 my $test_dir = "$full_prefix/slurm/testsuite/expect";
 $ENV{SLURM_LOCAL_GLOBALS_FILE} = "$test_dir/globals.$test_cname";
 chdir $test_dir or die "Couldn't chdir to $test_dir: $!";
-run_cmd("./regression.py --include=test22.1,test37.*");
+my $exit_code = 0;
+$exit_code = run_cmd("./regression.py --include=test22.1,test37.*", 1);
 
-print "Done running tests.\n\n";
+print "\nDone running tests!\n";
+print "But some tests failed\n" if $exit_code;
+print "\n\n";
 
-exit 0;
+print <<"END";
+You can now interact with the setup.
+See the README for information and examples on how to interact with the setup.
+
+END
+
+exit $exit_code;
 
 
 
@@ -176,6 +185,7 @@ sub run_cmd
 	print "cmd: $cmd\n";
 	my $rc = system($cmd);
 	die "ERROR: running $cmd: $!" if (!$ignore && $rc);
+	return $rc >> 8;
 }
 
 sub run_cmd_expect_error

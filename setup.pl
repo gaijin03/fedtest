@@ -238,9 +238,12 @@ for (1..$NUM_CLUSTERS) {
 #Now run the relevant federation expect tests
 print "Running federation tests.\n";
 my $cname = get_cluster_name(1);
-run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./regression.py --include=test22.1,test37.*'");
+my $exit_code = 0;
+$exit_code = run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./regression.py --include=test22.1,test37.*'", 1);
 
-print "\nDone running tests!\n\n";
+print "\nDone running tests!\n";
+print "But some tests failed\n" if $exit_code;
+print "\n\n";
 
 print <<"END";
 You can now interact with the setup.
@@ -248,7 +251,7 @@ See the README for information and examples on how to interact with the setup.
 
 END
 
-exit 0;
+exit $exit_code;
 
 
 ###############################################################################
@@ -276,6 +279,7 @@ sub run_cmd
 	print "cmd: $cmd\n";
 	my $rc = system($cmd);
 	die "ERROR: running $cmd: $!" if (!$ignore && $rc);
+	return $rc >> 8;
 }
 
 sub run_cmd_expect_error
