@@ -35,7 +35,7 @@ my $CLUSTER_PREFIX  = "fed";
 my $DB_USER   = "";
 my $DB_PASSWD = "";
 
-my $GIT_BRANCH = "federation";
+my $GIT_BRANCH = "master";
 my $GIT_REPO   = "https://github.com/SchedMD/slurm.git";
 
 my $NUM_CLUSTERS  = 3;
