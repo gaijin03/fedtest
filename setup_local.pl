@@ -43,17 +43,24 @@ my $SLURM_DB_NAME = "slurm_fed";
 my $user = `whoami`;
 chomp($user);
 
+my $RUN_TESTS       = 0;
+
 my $opt_prefix = "$ENV{HOME}/slurm/federation/";
 my $opt_help;
 
 my $full_prefix; # Expanded full path of prefix.
 
 my $usage =<<"END";
-USAGE: --prefix=<prefix> where to setup federation configuration [$opt_prefix]
+USAGE: $0
+       --branch=<name>   name of branch to clone (default: master)
+       --prefix=<prefix> where to setup federation configuration [$opt_prefix]
+       --runtests        run federation expect tests
        --help            print this message
 END
 
-GetOptions("prefix=s" => \$opt_prefix,
+GetOptions("branch=s" => \$GIT_BRANCH,
+	   "prefix=s" => \$opt_prefix,
+	   "runtests" => \$RUN_TESTS,
 	   "help"     => \$opt_help)
 	or die($usage);
 if (defined $opt_help) {
@@ -152,17 +159,18 @@ for (1..$NUM_CLUSTERS) {
 }
 print "Done starting all daemons\n\n";
 
-my $test_cname = get_cluster_name(1);
-print "Running regression tests\n";
-my $test_dir = "$full_prefix/slurm/testsuite/expect";
-$ENV{SLURM_LOCAL_GLOBALS_FILE} = "$test_dir/globals.$test_cname";
-chdir $test_dir or die "Couldn't chdir to $test_dir: $!";
 my $exit_code = 0;
-$exit_code = run_cmd("./regression.py --include=test22.1,test37.*", 1);
-
-print "\nDone running tests!\n";
-print "But some tests failed\n" if $exit_code;
-print "\n\n";
+if ($RUN_TESTS) {
+	my $test_cname = get_cluster_name(1);
+	print "Running regression tests\n";
+	my $test_dir = "$full_prefix/slurm/testsuite/expect";
+	$ENV{SLURM_LOCAL_GLOBALS_FILE} = "$test_dir/globals.$test_cname";
+	chdir $test_dir or die "Couldn't chdir to $test_dir: $!";
+	$exit_code = run_cmd("./regression.py --include=test22.1,test37.*", 1);
+	print "\nDone running tests!\n";
+	print "But some tests failed\n" if $exit_code;
+	print "\n\n";
+}
 
 print <<"END";
 You can now interact with the setup.

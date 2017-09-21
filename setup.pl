@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #######################################################################
 use strict;
+use Getopt::Long;
 
 my $ACCT_PORT       = 30000;
 my $BASE_PORT       = 30001;
@@ -41,6 +42,16 @@ my $NUM_CLUSTERS    = 3;
 my $REMOTE_PATH     = "/slurm";
 my $SLURM_DB_NAME   = "slurm_fed";
 my $SLURM_USER      = "root";
+my $RUN_TESTS       = 0;
+my $help            = 0;
+my $usage           = "Usage: $0 [--branch=<name>] [--runtests]\n";
+
+GetOptions("branch=s"  => \$GIT_BRANCH,
+	   "runtests"  => \$RUN_TESTS,
+	   "help"      => \$help)
+or die($usage);
+
+die $usage if $help;
 
 my $CWD = `pwd`; # Get full path
 chomp($CWD);
@@ -236,14 +247,19 @@ for (1..$NUM_CLUSTERS) {
 }
 
 #Now run the relevant federation expect tests
-print "Running federation tests.\n";
-my $cname = get_cluster_name(1);
 my $exit_code = 0;
-$exit_code = run_cmd("docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./regression.py --include=test22.1,test37.*'", 1);
+my $cname = get_cluster_name(1);
+my $test_cmd = "docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./regression.py -k --include=test22.1,test37.*'";
+if ($RUN_TESTS) {
+	print "Running federation tests.\n";
+	$exit_code = run_cmd($test_cmd, 1);
 
-print "\nDone running tests!\n";
-print "But some tests failed\n" if $exit_code;
-print "\n\n";
+	print "\nDone running tests!\n";
+	print "But some tests failed\n" if $exit_code;
+	print "\n\n";
+} else {
+	print "Run the expect tests using:\n$test_cmd\n";
+}
 
 print <<"END";
 You can now interact with the setup.
