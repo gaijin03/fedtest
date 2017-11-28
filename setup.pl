@@ -17,10 +17,9 @@
 #######################################################################
 use strict;
 use Getopt::Long;
+use File::Basename;
 
-my $ACCT_PORT       = 30000;
-my $BASE_PORT       = 30001;
-my $CLUSTER_PREFIX  = "fed";
+my $CLUSTER_PREFIX  = "c";
 my $DOCKER_NETWORK  = "federation";
 
 # ubuntu1604 settings:
@@ -39,7 +38,8 @@ my $DB_HOST         = "dbhost";
 my $DB_PASSWD       = "12345";
 my $DB_PERSIST      = "db_persist";
 my $NUM_CLUSTERS    = 3;
-my $REMOTE_PATH     = "/slurm";
+my $NUM_NODES       = 10;
+my $REMOTE_PATH     = "/fedtest";
 my $SLURM_DB_NAME   = "slurm_fed";
 my $SLURM_USER      = "root";
 my $RUN_TESTS       = 0;
@@ -87,18 +87,29 @@ END
 
 #Make sure containers are gone.
 print "Cleaning up any existing docker containers/networks\n";
-run_cmd("docker stop $DB_HOST", 1);
-run_cmd("docker rm -f $DB_HOST", 1);
+my @conts = "$DB_HOST";
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
-	run_cmd("docker stop $cname", 1);
-	run_cmd("docker rm  -f $cname", 1);
+	push @conts, "${cname}_controller";
+
+	for (1..$NUM_NODES) {
+		push @conts, "${cname}_$_";
+	}
 }
+my $all_conts = join ' ', @conts;
+run_cmd("docker stop $all_conts", 1);
+run_cmd("docker rm -f $all_conts", 1);
 
 #create docker network for federation
 run_cmd("docker network rm $DOCKER_NETWORK", 1);
 run_cmd("docker network create --driver bridge $DOCKER_NETWORK", 0);
 
+
+# setup environments
+print "Creating Slurm Environments\n";
+`mkdir -p env`;
+$CWD .= "/env";
+chdir $CWD or die "Couldn't chdir to $CWD: $!";
 
 # clone federation repo
 if (-d "slurm") {
@@ -109,11 +120,10 @@ if (-d "slurm") {
 	run_cmd("git clone -b $GIT_BRANCH $GIT_REPO", 0);
 }
 
-# setup environments
-print "Creating Slurm Environments\n";
 for (1..$NUM_CLUSTERS) {
 	setup_env($_);
 }
+
 print "Done done setting up Slurm Environments\n";
 
 # pull docker image now so that it doesn't get pulled multiple times before
@@ -122,60 +132,51 @@ print "Pulling docker image to run slurm in\n";
 run_cmd("docker pull $DOCKER_IMAGE", 0);
 
 # create containers and build slurm into environments
+print "Configuring source\n";
+`mkdir -p slurm/build`;
+run_cmd("docker run -P " .			#make ports available to localhost
+		"--net=$DOCKER_NETWORK " .	#docker user network
+		"-v $CWD:$REMOTE_PATH " .	#mount current directory
+		"-w $REMOTE_PATH/slurm/build " . #working directory
+		"--rm " .			#remove container after done
+		"$DOCKER_IMAGE " .		#docker image
+		"bash -c '$REMOTE_PATH/slurm/configure " .
+			 "--prefix=$REMOTE_PATH/current " .
+			 "--sysconfdir=/etc/slurm " .
+			 "--enable-developer " .
+			 ">/dev/null " .
+			 "&& make -j install > /dev/null'");
+
+# Setup environment to run federation tests.
+open FILE, ">$CWD/cmd_wrap.sh" or die "Couldn't open cmd_wrap.sh: $!";
+my $script = sprintf <<'END', $REMOTE_PATH;
+#!/bin/sh
+
+dir=`realpath -s $0`
+cluster=`dirname $dir`
+cluster=`dirname $cluster`
+cluster=`basename $cluster`
+export SLURM_CONF=%s/$cluster/etc/slurm.conf
+
+cmd=`basename $0`
+$cmd "$@"
+END
+print FILE $script;
+close FILE;
+run_cmd("chmod +x $CWD/cmd_wrap.sh", 0);
+
+run_cmd("mkdir -p $CWD/testbin", 0);
+my $tmp_cname = get_cluster_name(1);
+foreach my $file_path (<$CWD/current/bin/*>) {
+	my $file = basename($file_path);
+	run_cmd("ln -s -f $REMOTE_PATH/cmd_wrap.sh testbin/$file", 0);
+}
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
-	print "Configuring source for $cname -- in parallel\n";
-	run_cmd_fork("docker run -P " .				#make ports available to localhost
-				"-h $cname " .			#hostname
-			   	"--name=$cname " .		#container name
-			   	"--net=$DOCKER_NETWORK " .	#docker user network
-			   	"-v $CWD:/slurm " .		#mount current directory
-			   	"-w /slurm/$cname/slurm " .	#working directory
-			   	"--rm " .			#remove container after done
-			   	"$DOCKER_IMAGE " .		#docker image
-			   	"bash -c '/slurm/slurm/configure " .
-					"--prefix=/slurm/$cname " .
-					"--enable-developer " .
-					"--enable-multiple-slurmd >/dev/null'"); #command to run
-}
-while (my $pid = wait() != -1) {
-	my $rc = $? >> 8;
-	die "ERROR: forked pid:$pid returned an error (rc:$rc): $!" if ($?);
+	run_cmd("ln -s -f $REMOTE_PATH/testbin $cname/bin", 0);
 }
 
-# Can't parallize making of docs because make it makes copies of the man pages
-# in the src directory.
-for (1..$NUM_CLUSTERS) {
-	my $cname = get_cluster_name($_);
-	print "Making docs for $cname -- in serial\n";
-	run_cmd("docker run -P " .			#make ports available to localhost
-			   "-h $cname " .		#hostname
-			   "--name=$cname " .		#container name
-			   "--net=$DOCKER_NETWORK " .	#docker user network
-			   "-v $CWD:/slurm " .		#mount current directory
-			   "-w /slurm/$cname/slurm/doc " . #working directory
-			   "--rm " .			#remove container after done
-			   "$DOCKER_IMAGE " .		#docker image
-			   "bash -c 'make -j install >/dev/null'"); #command to run
-}
 
-for (1..$NUM_CLUSTERS) {
-	my $cname = get_cluster_name($_);
-	print "Installing source for $cname -- in parallel\n";
-	run_cmd_fork("docker run -P " .				#make ports available to localhost
-				"-h $cname " .			#hostname
-				"--name=$cname " .		#container name
-				"--net=$DOCKER_NETWORK " .	#docker user network
-				"-v $CWD:/slurm " .		#mount current directory
-				"-w /slurm/$cname/slurm " .	#working directory
-				"--rm " .			#remove container after done
-				"$DOCKER_IMAGE " .		#docker image
-				"bash -c 'make -j install >/dev/null'"); #command to run
-}
-while (my $pid = wait() != -1) {
-	my $rc = $? >> 8;
-	die "ERROR: forked pid:$pid returned an error (rc:$rc): $!" if ($?);
-}
 print "Done building source binaries\n";
 
 # start daemons
@@ -194,7 +195,7 @@ run_cmd("docker run -P " .			#make ports available to localhost
 		   "-d " .			#daemonize
 		   $DOCKER_DB_IMAGE);		#docker image
 
-#start 3 instances of ubuntu
+
 print "Start slurm daemons\n";
 
 #grab the current PATH from the container since it can't be set globally with -e
@@ -207,35 +208,50 @@ chomp($cont_path);
 
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
-	my $path_env = "PATH=/slurm/$cname/sbin:/slurm/$cname/bin:$cont_path";
+	my $path_env = "PATH=$REMOTE_PATH/current/sbin:$REMOTE_PATH/current/bin:$cont_path";
+	my $man_path_env = "MANPATH=$REMOTE_PATH/$cname/share/man";
 	my $testsuite_env = "SLURM_LOCAL_GLOBALS_FILE=globals.$cname";
-	run_cmd("docker run -P " .			#make ports available to localhost
-			   "-h $cname " .		#hostname
-			   "--name=$cname " .		#container name
-			   "--net=$DOCKER_NETWORK " .	#docker user network
-			   "-v $CWD:/slurm " .		#mount current directory
-			   "-w /slurm/$cname " .	#working directory
-			   "-d " .			#detach run in background
-			   "-e $path_env " .		#set PATH env variable
-			   "-e MANPATH=/slurm/$cname/share/man " . #set MANPATH env variable
-			   "-e $testsuite_env " .	#set testsuite env variable
-			   "-t " .			#allocate a tty.
-			   "--security-opt='seccomp=unconfined' " . #allows gdb to work
-			   "$DOCKER_IMAGE " .		#docker image
-			   "tail -f /dev/null");	#keep container running
 
-	run_cmd("docker exec $cname $MUNGE_START_CMD");
-	run_cmd("docker exec $cname /slurm/$cname/sbin/slurmdbd") if ($_ == 1);
-	sleep 5;
-	run_cmd_expect_error("docker exec $cname /slurm/$cname/bin/sacctmgr -i add cluster $cname",
+	my $docker_cmd_fmt = "docker run -P " .			#make ports available to localhost
+				   "-h %s " .			#hostname
+				   "--name=%s " .		#container name
+				   "--net=$DOCKER_NETWORK " .	#docker user network
+				   "-v $CWD:$REMOTE_PATH " .	#mount current directory
+				   "-w $REMOTE_PATH " .	#working directory
+				   "-d " .			#detach run in background
+				   "-e $path_env " .		#set PATH env variable
+				   "-e $man_path_env " . 	#set MANPATH env variable
+				   "-e $testsuite_env " .	#set testsuite env variable
+				   "-t " .			#allocate a tty.
+				   "--security-opt='seccomp=unconfined' " . #allows gdb to work
+				   "$DOCKER_IMAGE " .		#docker image
+				   "tail -f /dev/null";		#keep container running
+
+	#start compute nodes
+	for (1..$NUM_NODES) {
+		my $cont_name = "${cname}_$_";
+		my $docker_cmd = sprintf $docker_cmd_fmt, $cont_name, $cont_name;
+		run_cmd($docker_cmd);
+		run_cmd("docker exec $cont_name $MUNGE_START_CMD");
+		run_cmd("docker exec $cont_name ln -s $REMOTE_PATH/$cname/etc /etc/slurm");
+		run_cmd("docker exec $cont_name slurmd");
+	}
+
+	my $cont_name = "${cname}_controller";
+	my $docker_cmd = sprintf $docker_cmd_fmt, $cont_name, $cont_name;
+	run_cmd($docker_cmd);
+
+	run_cmd("docker exec $cont_name $MUNGE_START_CMD");
+	run_cmd("docker exec $cont_name ln -s $REMOTE_PATH/$cname/etc /etc/slurm");
+
+	if ($_ == 1) {
+		run_cmd("docker exec $cont_name slurmdbd");
+		sleep 5;
+	}
+	run_cmd_expect_error("docker exec $cont_name sacctmgr -i add cluster $cname",
 			     "This cluster $cname already exists.  Not adding.");
 	sleep 5;
-	run_cmd("docker exec $cname /slurm/$cname/sbin/slurmctld -c");
-
-	#start nodes
-	for (1..10) {
-		run_cmd("docker exec $cname /slurm/$cname/sbin/slurmd -N ${cname}_$_");
-	}
+	run_cmd("docker exec $cont_name slurmctld -c");
 }
 
 #print sinfo for each cluster
@@ -243,13 +259,13 @@ print "Making sure everything is responding:\n";
 sleep 3; #Give time for last slurmds to come up.
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
-	run_cmd("docker exec $cname sinfo");
+	run_cmd("docker exec ${cname}_controller sinfo");
 }
 
 #Now run the relevant federation expect tests
 my $exit_code = 0;
 my $cname = get_cluster_name(1);
-my $test_cmd = "docker exec $cname bash -c 'cd /slurm/slurm/testsuite/expect && ./regression.py -k --include=test22.1,test37.*'";
+my $test_cmd = "docker exec ${cname}_controller bash -c 'cd $REMOTE_PATH/slurm/testsuite/expect && ./regression.py -k --include=test22.1,test37.*'";
 if ($RUN_TESTS) {
 	print "Running federation tests.\n";
 	$exit_code = run_cmd($test_cmd, 1);
@@ -322,12 +338,11 @@ sub setup_env
 	run_cmd("mkdir -p $cname/spool", 0);
 	run_cmd("mkdir -p $cname/run",   0);
 	run_cmd("mkdir -p $cname/log",   0);
-	run_cmd("mkdir -p $cname/slurm", 0);
 	run_cmd("mkdir -p $cname/etc",   0);
 
 	# slurm.conf
 	open FILE, ">$cname/etc/slurm.conf" or die "Couldn't create slurm.conf: $!";
-	print FILE make_slurm_conf($cname, $BASE_PORT);
+	print FILE make_slurm_conf($cname);
 	close FILE;
 
 	# slurmdbd.conf
@@ -340,14 +355,14 @@ sub setup_env
 	print FILE <<"END";
 set my_slurm_base "$REMOTE_PATH"
 set src_dir "\$my_slurm_base/slurm"
-set slurm_dir "\$my_slurm_base/$cname"
-set build_dir "\$slurm_dir/slurm"
+set slurm_dir "\$my_slurm_base/current"
+set build_dir "\$src_dir/build"
 set partition "debug"
 
 set fed_slurm_base "\$my_slurm_base"
-set fedc1 "fed1"
-set fedc2 "fed2"
-set fedc3 "fed3"
+set fedc1 ${CLUSTER_PREFIX}1
+set fedc2 ${CLUSTER_PREFIX}2
+set fedc3 ${CLUSTER_PREFIX}3
 END
 
 	close FILE;
@@ -362,16 +377,11 @@ sub get_cluster_name
 sub make_slurm_conf
 {
 	my $cname    = shift;
-	my $loc_port = shift;
-
-	my $ctld_port  = $loc_port++;
-	my $host_ports = $loc_port . "-" . ($loc_port+9);
-
-	my $dbd_host = get_cluster_name(1);
+	my $dbd_host = get_cluster_name(1) . "_controller";
 
 	my $conf =<<"END";
 ClusterName=$cname
-ControlMachine=$cname
+ControlMachine=${cname}_controller
 AuthType=auth/munge
 AuthInfo=cred_expire=30 #quicker requeue time
 CacheGroups=0
@@ -380,7 +390,7 @@ MpiDefault=none
 #ProctrackType=proctrack/pgid
 ProctrackType=proctrack/linuxproc
 SlurmctldPidFile=$REMOTE_PATH/$cname/run/slurmctld.pid
-SlurmctldPort=$ctld_port
+#SlurmctldPort=
 SlurmdPidFile=$REMOTE_PATH/$cname/run/slurmd-%n.pid
 SlurmdSpoolDir=$REMOTE_PATH/$cname/spool/slurmd-%n
 SlurmUser=$SLURM_USER
@@ -403,7 +413,7 @@ SelectTypeParameters=CR_CORE_Memory
 PriorityType=priority/multifactor
 AccountingStorageEnforce=associations,limits,qos,safe
 AccountingStorageHost=$dbd_host
-AccountingStoragePort=$ACCT_PORT
+#AccountingStoragePort=
 AccountingStorageType=accounting_storage/slurmdbd
 AccountingStoreJobComment=YES
 
@@ -417,9 +427,9 @@ DebugFlags=protocol,federation
 LogTimeFormat=thread_id
 
 NodeName=DEFAULT CPUs=8 Sockets=1 CoresPerSocket=4 ThreadsPerCore=2 State=UNKNOWN RealMemory=7830
-NodeName=${cname}_[1-10] NodeAddr=$cname Port=$host_ports
+NodeName=${cname}_[1-$NUM_NODES]
 
-PartitionName=debug Nodes=${cname}_[1-10] Default=YES MaxTime=INFINITE State=UP
+PartitionName=debug Nodes=${cname}_[1-$NUM_NODES] Default=YES MaxTime=INFINITE State=UP
 
 RequeueExit=5
 RequeueExitHold=6
@@ -436,8 +446,8 @@ sub make_slurmdbd_conf
 
 	my $conf =<<"END";
 AuthType=auth/munge
-DbdHost=$cname
-DbdPort=$ACCT_PORT
+DbdHost=${cname}_controller
+#DbdPort=
 
 DebugFlags=FEDERATION
 DebugLevel=info
