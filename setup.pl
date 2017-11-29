@@ -41,7 +41,8 @@ my $NUM_CLUSTERS    = 3;
 my $NUM_NODES       = 10;
 my $REMOTE_PATH     = "/fedtest";
 my $SLURM_DB_NAME   = "slurm_fed";
-my $SLURM_USER      = "root";
+my $SLURM_USER      = "slurm";
+my $SLURM_UID       = 992;
 my $RUN_TESTS       = 0;
 my $help            = 0;
 my $usage           = "Usage: $0 [--branch=<name>] [--runtests]\n";
@@ -191,12 +192,23 @@ run_cmd("docker run -P " .			#make ports available to localhost
 		   "--name=$DB_HOST " .		#container name
 		   "--net=$DOCKER_NETWORK " .	#docker user network
 		   "-e MYSQL_ROOT_PASSWORD=$DB_PASSWD " .	#root passwd
+		   "-e MYSQL_USER=$SLURM_USER " .		#user
+		   "-e MYSQL_PASSWORD=$DB_PASSWD " .		#passwd
+		   "-e MYSQL_DATABASE=$SLURM_DB_NAME " .	#db name
 		   "-v $CWD/$DB_PERSIST:/var/lib/mysql " .	#mount mysql persist directory
 		   "-d " .			#daemonize
 		   $DOCKER_DB_IMAGE);		#docker image
 
-
 print "Start slurm daemons\n";
+
+
+# Get current users ids and to create the user in the container
+my $id = `id`;
+$id =~ m/uid=(\d+)\((\S+)\) gid=(\d+)\((\S+)\)/ or die "Couldn't match uid/gid: $!";
+my $uid   = $1;
+my $user  = $2;
+my $gid   = $3;
+my $group = $4;
 
 #grab the current PATH from the container since it can't be set globally with -e
 #because it won't take the $PATH of the container -- takes $PATH from the
@@ -205,6 +217,17 @@ my $path_cmd = "docker run --rm $DOCKER_IMAGE bash -c 'echo \$PATH'";
 my $cont_path = `$path_cmd`;
 die "ERROR: running $path_cmd: $!" if ($?);
 chomp($cont_path);
+
+
+# Create default bash profile with Slurm PATHS.
+open FILE, ">slurm_profile.sh" or die "Couldn't open slurm_profile.sh: $!";
+print FILE <<"EOF";
+S_PATH=$REMOTE_PATH/current
+PATH=\$PATH:\$S_PATH/bin:\$S_PATH/sbin
+SLURM_LOCAL_GLOBALS_FILE=globals.fedtest
+MANPATH=$REMOTE_PATH/current/share/man
+EOF
+close FILE;
 
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
@@ -217,7 +240,8 @@ for (1..$NUM_CLUSTERS) {
 				   "--name=%s " .		#container name
 				   "--net=$DOCKER_NETWORK " .	#docker user network
 				   "-v $CWD:$REMOTE_PATH " .	#mount current directory
-				   "-w $REMOTE_PATH " .	#working directory
+				   "-v $ENV{'HOME'}:/home/$user " . #mount /home
+				   "-w $REMOTE_PATH " .		#working directory
 				   "-d " .			#detach run in background
 				   "-e $path_env " .		#set PATH env variable
 				   "-e $man_path_env " . 	#set MANPATH env variable
@@ -234,7 +258,14 @@ for (1..$NUM_CLUSTERS) {
 		run_cmd($docker_cmd);
 		run_cmd("docker exec $cont_name $MUNGE_START_CMD");
 		run_cmd("docker exec $cont_name ln -s $REMOTE_PATH/$cname/etc /etc/slurm");
+		run_cmd("docker exec $cont_name ln -s $REMOTE_PATH/slurm_profile.sh /etc/profile.d/slurm.sh");
+		run_cmd("docker exec $cont_name groupadd -g $SLURM_UID slurm");
+		run_cmd("docker exec $cont_name useradd -m -d /home/slurm -u $SLURM_UID -g slurm -s /bin/bash slurm");
+		run_cmd("docker exec $cont_name chown -R $SLURM_USER: $REMOTE_PATH/$cname", 0);
+		run_cmd("docker exec $cont_name groupadd -g $gid $group");
+		run_cmd("docker exec $cont_name useradd -M -u $uid -g $group $user");
 		run_cmd("docker exec $cont_name slurmd");
+
 	}
 
 	my $cont_name = "${cname}_controller";
@@ -243,15 +274,23 @@ for (1..$NUM_CLUSTERS) {
 
 	run_cmd("docker exec $cont_name $MUNGE_START_CMD");
 	run_cmd("docker exec $cont_name ln -s $REMOTE_PATH/$cname/etc /etc/slurm");
+	run_cmd("docker exec $cont_name ln -s $REMOTE_PATH/slurm_profile.sh /etc/profile.d/slurm.sh");
+	run_cmd("docker exec $cont_name groupadd -g $SLURM_UID slurm");
+	run_cmd("docker exec $cont_name useradd -m -d /home/slurm -u $SLURM_UID -g slurm -s /bin/bash slurm");
+	run_cmd("docker exec $cont_name chown -R $SLURM_USER: $REMOTE_PATH/$cname", 0);
+	run_cmd("docker exec $cont_name groupadd -g $gid $group");
+	run_cmd("docker exec $cont_name useradd -M -u $uid -g $group $user");
 
 	if ($_ == 1) {
-		run_cmd("docker exec $cont_name slurmdbd");
+		run_cmd("docker exec -u$SLURM_USER $cont_name slurmdbd");
 		sleep 5;
 	}
 	run_cmd_expect_error("docker exec $cont_name sacctmgr -i add cluster $cname",
 			     "This cluster $cname already exists.  Not adding.");
+	run_cmd_expect_error("docker exec $cont_name sacctmgr -i add account acct", 1);
+	run_cmd_expect_error("docker exec $cont_name sacctmgr -i add user $user account=acct admin=admin", 1);
 	sleep 5;
-	run_cmd("docker exec $cont_name slurmctld -c");
+	run_cmd("docker exec -u$SLURM_USER $cont_name slurmctld -c");
 }
 
 #print sinfo for each cluster
@@ -265,7 +304,7 @@ for (1..$NUM_CLUSTERS) {
 #Now run the relevant federation expect tests
 my $exit_code = 0;
 my $cname = get_cluster_name(1);
-my $test_cmd = "docker exec ${cname}_controller bash -c 'cd $REMOTE_PATH/slurm/testsuite/expect && ./regression.py -k --include=test22.1,test37.*'";
+my $test_cmd = "docker exec -u$user ${cname}_controller bash -l -c 'cd $REMOTE_PATH/slurm/testsuite/expect && ./regression.py -k --include=test22.1,test37.*'";
 if ($RUN_TESTS) {
 	print "Running federation tests.\n";
 	$exit_code = run_cmd($test_cmd, 1);
@@ -350,9 +389,10 @@ sub setup_env
 	print FILE make_slurmdbd_conf($cname);
 	close FILE;
 
-	# globals.local
-	open FILE, ">$CWD/slurm/testsuite/expect/globals.$cname" or die "Couldn't create globals.$cname $!";
-	print FILE <<"END";
+	if ($index == 1) {
+		# globals.local
+		open FILE, ">$CWD/slurm/testsuite/expect/globals.fedtest" or die "Couldn't create globals.fedtest $!";
+		print FILE <<"END";
 set my_slurm_base "$REMOTE_PATH"
 set src_dir "\$my_slurm_base/slurm"
 set slurm_dir "\$my_slurm_base/current"
@@ -365,7 +405,8 @@ set fedc2 ${CLUSTER_PREFIX}2
 set fedc3 ${CLUSTER_PREFIX}3
 END
 
-	close FILE;
+		close FILE;
+	}
 }
 
 sub get_cluster_name
@@ -394,7 +435,7 @@ SlurmctldPidFile=$REMOTE_PATH/$cname/run/slurmctld.pid
 SlurmdPidFile=$REMOTE_PATH/$cname/run/slurmd-%n.pid
 SlurmdSpoolDir=$REMOTE_PATH/$cname/spool/slurmd-%n
 SlurmUser=$SLURM_USER
-SlurmdUser=$SLURM_USER
+SlurmdUser=root
 StateSaveLocation=$REMOTE_PATH/$cname/state
 SwitchType=switch/none
 TaskPlugin=affinity
