@@ -1,0 +1,32 @@
+root:
+docker exec -ti c1_controller bash
+
+user:
+docker exec -tiu $USER c1_controller bash -l
+
+
+Local ID:
+$number & 0x03FFFFFF
+
+Cluster ID:
+$number >> 26
+
+
+alias FEDSQUEUE="export SQUEUE_FORMAT2='jobarrayid:18,cluster:.8,statecompact:.4,origin:.11,siblingsviable:.20,siblingsactive:.20,timeused:.12,numnodes:.6,nodelist:.15'"
+
+
+function fedlocalid
+{
+	perl -e 'print "" . ($ARGV[0] & 0x03FFFFFF) . "\n"' $1
+}
+
+function fedclustterid
+{
+	perl -e 'print "" . ($ARGV[0] >> 26) . "\n"' $1
+}
+
+function fedjobid
+{
+	perl -e 'printf "Fed:%d Local:%d Cluster:%d\n", \
+		$ARGV[0], ($ARGV[0] & 0x03FFFFFF), ($ARGV[0] >> 26)' $1
+}
