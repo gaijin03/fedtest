@@ -233,8 +233,8 @@ close FILE;
 for (1..$NUM_CLUSTERS) {
 	my $cname = get_cluster_name($_);
 	my $path_env = "PATH=$REMOTE_PATH/current/sbin:$REMOTE_PATH/current/bin:$cont_path";
-	my $man_path_env = "MANPATH=$REMOTE_PATH/$cname/share/man";
-	my $testsuite_env = "SLURM_LOCAL_GLOBALS_FILE=globals.$cname";
+	my $man_path_env = "MANPATH=$REMOTE_PATH/current/share/man";
+	my $testsuite_env = "SLURM_LOCAL_GLOBALS_FILE=globals.fedtest";
 
 	my $docker_cmd_fmt = "docker run -P " .			#make ports available to localhost
 				   "-h %s " .			#hostname
