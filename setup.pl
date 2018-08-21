@@ -145,6 +145,7 @@ run_cmd("docker run -P " .			#make ports available to localhost
 			 "--prefix=$REMOTE_PATH/current " .
 			 "--sysconfdir=/etc/slurm " .
 			 "--enable-developer " .
+			 "--disable-optimizations" .
 			 ">/dev/null " .
 			 "&& make -j install > /dev/null'");
 
