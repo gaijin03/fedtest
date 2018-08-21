@@ -465,7 +465,7 @@ SlurmctldDebug=info
 SlurmctldLogFile=$REMOTE_PATH/$cname/log/slurmctld.log
 SlurmdDebug=debug
 SlurmdLogFile=$REMOTE_PATH/$cname/log/slurmd-%n.log
-DebugFlags=protocol,federation
+DebugFlags=federation
 LogTimeFormat=thread_id
 
 NodeName=DEFAULT CPUs=8 Sockets=1 CoresPerSocket=4 ThreadsPerCore=2 State=UNKNOWN RealMemory=7830
