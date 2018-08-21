@@ -503,6 +503,8 @@ StoragePass=$DB_PASSWD
 StorageType=accounting_storage/mysql
 StorageLoc=$SLURM_DB_NAME
 StorageHost=$DB_HOST
+
+TrackWCKey=yes
 END
 
 	return $conf;
