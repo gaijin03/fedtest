@@ -30,7 +30,7 @@ use Getopt::Long;
 
 my $ACCT_PORT = 30000;
 my $BASE_PORT = 30001;
-my $CLUSTER_PREFIX  = "fed";
+my $CLUSTER_PREFIX  = "c";
 
 my $DB_USER   = "";
 my $DB_PASSWD = "";
@@ -243,9 +243,9 @@ set build_dir "\$slurm_dir/slurm"
 set partition "debug"
 
 set fed_slurm_base "\$my_slurm_base"
-set fedc1 "fed1"
-set fedc2 "fed2"
-set fedc3 "fed3"
+set fedc1 "c1"
+set fedc2 "c2"
+set fedc3 "c3"
 END
 
 	close FILE;
