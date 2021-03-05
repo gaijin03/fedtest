@@ -389,6 +389,7 @@ sub setup_env
 	open FILE, ">$cname/etc/slurmdbd.conf" or die "Couldn't create slurmdbd.conf: $!";
 	print FILE make_slurmdbd_conf($cname);
 	close FILE;
+	run_cmd("chmod 600 $cname/etc/slurmdbd.conf", 0);
 
 	if ($index == 1) {
 		# globals.local
@@ -448,7 +449,6 @@ SlurmctldTimeout=120
 SlurmdTimeout=30
 Waittime=0
 DefMemPerCPU=100
-FastSchedule=2
 SchedulerType=sched/backfill
 SelectType=select/cons_res
 SelectTypeParameters=CR_CORE_Memory
@@ -458,6 +458,7 @@ AccountingStorageHost=$dbd_host
 #AccountingStoragePort=
 AccountingStorageType=accounting_storage/slurmdbd
 AccountingStoreJobComment=YES
+SlurmdParameters=config_overrides
 
 JobAcctGatherType=jobacct_gather/linux
 
