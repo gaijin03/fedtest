@@ -427,7 +427,6 @@ ClusterName=$cname
 ControlMachine=${cname}_controller
 AuthType=auth/munge
 AuthInfo=cred_expire=30 #quicker requeue time
-CacheGroups=0
 CryptoType=crypto/munge
 MpiDefault=none
 #ProctrackType=proctrack/pgid
@@ -457,7 +456,7 @@ AccountingStorageEnforce=associations,limits,qos,safe
 AccountingStorageHost=$dbd_host
 #AccountingStoragePort=
 AccountingStorageType=accounting_storage/slurmdbd
-AccountingStoreJobComment=YES
+AccountingStoreFlags=job_comment
 SlurmdParameters=config_overrides
 
 JobAcctGatherType=jobacct_gather/linux
