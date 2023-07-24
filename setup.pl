@@ -391,6 +391,11 @@ sub setup_env
 	close FILE;
 	run_cmd("chmod 600 $cname/etc/slurmdbd.conf", 0);
 
+	# cgroup.conf
+	open FILE, ">$cname/etc/cgroup.conf" or die "Couldn't create cgroup.conf: $!";
+	print FILE make_cgroup_conf();
+	close FILE;
+
 	if ($index == 1) {
 		# globals.local
 		open FILE, ">$CWD/slurm/testsuite/expect/globals.fedtest" or die "Couldn't create globals.fedtest $!";
@@ -505,6 +510,15 @@ StorageLoc=$SLURM_DB_NAME
 StorageHost=$DB_HOST
 
 TrackWCKey=yes
+END
+
+	return $conf;
+}
+
+sub make_cgroup_conf
+{
+	my $conf =<<"END";
+CgroupPlugin=cgroup/v1
 END
 
 	return $conf;
