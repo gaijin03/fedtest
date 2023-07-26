@@ -248,6 +248,7 @@ for (1..$NUM_CLUSTERS) {
 				   "-e $man_path_env " . 	#set MANPATH env variable
 				   "-e $testsuite_env " .	#set testsuite env variable
 				   "-t " .			#allocate a tty.
+				   "--cap-add=SYS_PTRACE " .    # allows gdb to work
 				   "--security-opt='seccomp=unconfined' " . #allows gdb to work
 				   "$DOCKER_IMAGE " .		#docker image
 				   "tail -f /dev/null";		#keep container running
