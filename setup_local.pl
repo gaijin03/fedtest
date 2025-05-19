@@ -144,8 +144,8 @@ for (1..$NUM_CLUSTERS) {
 			     "This cluster $cname already exists.  Not adding.");
 
 	if ($_ == $NUM_CLUSTERS) {
-		run_cmd_expect_error("$full_prefix/$cname/bin/sacctmgr -i add account tacct", "Nothing new added.");
-		run_cmd_expect_error("$full_prefix/$cname/bin/sacctmgr -i add user $user account=tacct", "Nothing new added");
+		run_cmd_expect_error("$full_prefix/$cname/bin/sacctmgr -i add account tacct", "Already existing account");
+		run_cmd_expect_error("$full_prefix/$cname/bin/sacctmgr -i add user $user account=tacct", "Nothing added");
 		run_cmd("$full_prefix/$cname/bin/sacctmgr -i mod user $user set admin=admin");
 	}
 }
@@ -372,7 +372,6 @@ ClusterName=$cname
 ControlMachine=localhost
 AuthType=auth/munge
 AuthInfo=cred_expire=30 #quicker requeue time
-CacheGroups=0
 CryptoType=crypto/munge
 MpiDefault=none
 ProctrackType=proctrack/pgid
@@ -394,14 +393,14 @@ SlurmdTimeout=30
 Waittime=0
 DefMemPerCPU=100
 SchedulerType=sched/backfill
-SelectType=select/cons_res
+SelectType=select/cons_tres
 SelectTypeParameters=CR_CORE_Memory
 PriorityType=priority/multifactor
 AccountingStorageEnforce=associations,limits,qos,safe
 AccountingStorageHost=localhost
 AccountingStoragePort=$ACCT_PORT
 AccountingStorageType=accounting_storage/slurmdbd
-AccountingStoreJobComment=YES
+AccountingStoreFlags=job_comment
 SlurmdParameters=config_overrides
 
 JobAcctGatherType=jobacct_gather/linux
@@ -446,6 +445,8 @@ SlurmUser=$user
 StorageType=accounting_storage/mysql
 StorageLoc=$SLURM_DB_NAME
 StorageHost=localhost
+
+TrackWCKey=yes
 END
 
 	if ($DB_USER ne "") {
